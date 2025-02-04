@@ -1,0 +1,71 @@
+name: Integration Tests
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:  # allows manual triggering in the Actions tab
+
+jobs:
+  run-tests:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      # 1) (Optional) Docker login if your images are private
+      # If Docker Hub images are public, skip this step.
+      - name: Docker Login
+        if: always()
+        uses: docker/login-action@v2
+        with:
+          registry: docker.io
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      # 2) Spin up containers in the background
+      - name: Docker Compose Up
+        run: docker-compose up -d
+
+      # 3) Wait for containers to become healthy
+      # This is a simple approach (sleep); you can also poll a /health endpoint in a loop
+      - name: Wait for services
+        run: |
+          echo "Waiting 30 seconds for services to start..."
+          sleep 30
+
+      # 4) Run end-to-end tests
+      # Option A: Curl checks to verify each service's health or key endpoints
+      - name: Basic Endpoint Checks
+        run: |
+          set -e  # fail on error
+          echo "Checking Gateway health..."
+          curl -f http://localhost:9999/actuator/health
+          
+          echo "Checking Patient Management..."
+          curl -f http://localhost:8082/actuator/health
+
+          echo "Checking Billing..."
+          curl -f http://localhost:8086/actuator/health
+
+          echo "Checking Scheduling..."
+          curl -f http://localhost:8083/actuator/health
+
+          echo "Checking Kidney Stone Service..."
+          curl -f http://localhost:8000/health
+
+          # or further checks, e.g., create a patient, schedule an appointment, etc.
+
+      # Option B: Use Newman to run a Postman collection
+      # - name: Install Newman
+      #   run: npm install -g newman
+      #
+      # - name: Run Postman Tests
+      #   run: newman run postman_collection.json --environment postman_environment.json
+
+      # 5) Tear down containers
+      - name: Docker Compose Down
+        if: always()
+        run: docker-compose down

@@ -1,0 +1,158 @@
+services:
+  ##################################################################
+  # Infrastructure Services
+  ##################################################################
+  consul:
+    image: consul:1.15
+    container_name: consul
+    ports:
+      - "8500:8500"
+    networks:
+      - my-network
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    networks:
+      - my-network
+
+  mongo-db:
+    image: mongo:latest
+    container_name: mongo-db
+    ports:
+      - "27017:27017"
+    networks:
+      - my-network
+
+  postgres-billing-db:
+    image: postgres:15
+    container_name: postgres-billing-db
+    environment:
+      POSTGRES_USER: yassineboughroudi
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: billing_db
+    ports:
+      - "5432:5432"
+    networks:
+      - my-network
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  postgres-scheduling-db:
+    image: postgres:15
+    container_name: postgres-scheduling-db
+    environment:
+      POSTGRES_USER: yassineboughroudi
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: scheduling_db
+    networks:
+      - my-network
+    volumes:
+      - postgres-scheduling-data:/var/lib/postgresql/data
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U admin" ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  ##################################################################
+  # Microservices from Docker Hub (PULLED images)
+  ##################################################################
+  config-server:
+    image: docker.io/boughroudi/config-server:latest
+    container_name: config-server
+    environment:
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8080
+      - SPRING_CLOUD_CONSUL_HOST=consul
+      - SPRING_CLOUD_CONSUL_PORT=8500
+    ports:
+      - "8888:8080"
+    depends_on:
+      - consul
+    networks:
+      - my-network
+
+  patient-management-service:
+    image: docker.io/boughroudi/patient-management-service:latest
+    container_name: patient-management-service
+    ports:
+      - "8082:8080"
+    depends_on:
+      - config-server
+      - consul
+    networks:
+      - my-network
+
+  billing-service:
+    image: docker.io/boughroudi/billing-service:latest
+    container_name: billing-service
+    environment:
+      - SPRING_JPA_HIBERNATE_DDL_AUTO=update
+    ports:
+      - "8086:8080"
+    depends_on:
+      - config-server
+      - consul
+      - postgres-billing-db
+      - rabbitmq
+    networks:
+      - my-network
+
+  scheduling-service:
+    image: docker.io/boughroudi/scheduling-service:latest
+    container_name: scheduling-service
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: root
+      POSTGRES_DB: scheduling_db
+    ports:
+      - "8083:8080"
+    depends_on:
+      - config-server
+      - consul
+      - postgres-scheduling-db
+      - rabbitmq
+    networks:
+      - my-network
+
+  kidney-stone-service:
+    image: docker.io/boughroudi/kidney-stone-service:latest
+    container_name: kidney-stone-service
+    environment:
+      - MONGODB_URI=mongodb://mongo-db:27017
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+    depends_on:
+      - mongo-db
+      - config-server
+      - rabbitmq
+      - patient-management-service
+    networks:
+      - my-network
+    ports:
+      - "8000:8000"
+
+  gateway-service:
+    image: docker.io/boughroudi/gateway-service:latest
+    container_name: gateway-service
+    ports:
+      - "9999:8080"
+    depends_on:
+      - config-server
+      - kidney-stone-service
+      - patient-management-service
+    networks:
+      - my-network
+
+networks:
+  my-network:
+    driver: bridge
+
+volumes:
+  postgres-data:
+  postgres-scheduling-data:
