@@ -29,12 +29,38 @@ jobs:
       - name: Docker Compose Up
         run: docker compose up -d
 
-      # 3) Wait for containers to become healthy
-      # This is a simple approach (sleep); you can also poll a /health endpoint in a loop
-      - name: Wait for services
+      - name: Wait for Containers to be Healthy
         run: |
-          echo "Waiting 30 seconds for services to start..."
-          sleep 30
+          set -e
+          TIMEOUT=120  # 2 minutes, adjust as needed
+          SECONDS=0
+          
+          while true; do
+            # Check how many containers have (healthy) status
+            HEALTHY_COUNT=$(docker-compose ps --format json | \
+              jq '[ .[] | select(.State == "running" and .Health == "healthy") ] | length')
+          
+            # Count how many total services you expect to be healthy
+            # (Excluding your DB containers or only focusing on your microservices)
+            EXPECTED_HEALTHY=6  # e.g., 6 microservices that do health checks
+          
+            echo "Currently healthy containers: $HEALTHY_COUNT"
+          
+            if [ "$HEALTHY_COUNT" -eq "$EXPECTED_HEALTHY" ]; then
+              echo "All containers are healthy!"
+              break
+            fi
+          
+            if [ $SECONDS -gt $TIMEOUT ]; then
+              echo "Timed out waiting for containers to become healthy."
+              docker-compose ps
+              exit 1
+            fi
+          
+            echo "Not all containers healthy yet, waiting 5 seconds..."
+            sleep 5
+          done
+      
 
       # 4) Run end-to-end tests
       # Option A: Curl checks to verify each service's health or key endpoints
@@ -68,4 +94,4 @@ jobs:
       # 5) Tear down containers
       - name: Docker Compose Down
         if: always()
-        run: docker-compose down
+        run: docker compose down
