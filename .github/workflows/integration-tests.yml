@@ -27,7 +27,7 @@ jobs:
 
       # 2) Spin up containers in the background
       - name: Docker Compose Up
-        run: docker-compose up -d
+        run: docker compose up -d
 
       # 3) Wait for containers to become healthy
       # This is a simple approach (sleep); you can also poll a /health endpoint in a loop
