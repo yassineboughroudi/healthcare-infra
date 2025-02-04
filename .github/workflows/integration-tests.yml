@@ -37,7 +37,7 @@ jobs:
           
           while true; do
             # Check how many containers have (healthy) status
-            HEALTHY_COUNT=$(docker-compose ps --format json | \
+            HEALTHY_COUNT=$(docker compose ps --format json | \
               jq '[ .[] | select(.State == "running" and .Health == "healthy") ] | length')
           
             # Count how many total services you expect to be healthy
@@ -53,7 +53,7 @@ jobs:
           
             if [ $SECONDS -gt $TIMEOUT ]; then
               echo "Timed out waiting for containers to become healthy."
-              docker-compose ps
+              docker compose ps
               exit 1
             fi
           
