@@ -1,10 +1,14 @@
+version: "3.8"
+
 services:
-  ##################################################################
-  # Infrastructure Services
-  ##################################################################
+  # ----------------------------------------------------
+  # Consul
+  # ----------------------------------------------------
   consul:
     image: consul:1.15
     container_name: consul
+    platform: linux/amd64
+    restart: on-failure
     ports:
       - "8500:8500"
     networks:
@@ -15,8 +19,26 @@ services:
       timeout: 10s
       retries: 5
 
+  # ----------------------------------------------------
+  # Config Server
+  # ----------------------------------------------------
+  config-server:
+      image: docker.io/boughroudi/config-server:latest
+      container_name: config-server
+      platform: linux/amd64
+      restart: on-failure
+      ports:
+        - "8888:8080"
+      networks:
+        - my-network
+      depends_on:
+        - consul
+
+  # ----------------------------------------------------
+  # RabbitMQ
+  # ----------------------------------------------------
   rabbitmq:
-    image: rabbitmq:3-management
+    image: rabbitmq:3.11-management
     container_name: rabbitmq
     environment:
       RABBITMQ_DEFAULT_USER: guest
@@ -26,210 +48,168 @@ services:
       - "15672:15672"
     networks:
       - my-network
+    restart: on-failure
     healthcheck:
       test: ["CMD-SHELL", "rabbitmqctl status"]
-      interval: 5s
-      timeout: 10s
+      interval: 10s
+      timeout: 5s
       retries: 5
 
+  # ----------------------------------------------------
+  # MongoDB (for kidney-stone-service)
+  # ----------------------------------------------------
   mongo-db:
-    image: mongo:latest
+    image: mongo:4.4
     container_name: mongo-db
+    platform: linux/amd64
+    restart: on-failure
     ports:
       - "27017:27017"
     networks:
       - my-network
-    # (Optional) If you want a healthcheck for Mongo:
-    # healthcheck:
-    #   test: ["CMD-SHELL", "mongo --eval 'db.runCommand({ ping: 1 })' || exit 1"]
-    #   interval: 10s
-    #   timeout: 5s
-    #   retries: 5
 
-  postgres-billing-db:
-    image: postgres:15
-    container_name: postgres-billing-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: billing_db
-    ports:
-      - "5432:5432"
-    networks:
-      - my-network
-    volumes:
-      - postgres-billing-data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d  # Ensures DB and users are created
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 10s
-      retries: 5
+  #  # ----------------------------------------------------
+  #  # PostgreSQL for Billing
+  #  # ----------------------------------------------------
+  #  postgres-billing-db:
+  #    image: postgres:15
+  #    container_name: postgres-billing-db
+  #    platform: linux/amd64
+  #    environment:
+  #      POSTGRES_USER: yassineboughroudi
+  #      POSTGRES_PASSWORD: root
+  #      POSTGRES_DB: billing_db
+  #    ports:
+  #      - "5432:5432"
+  #    networks:
+  #      - my-network
+  #    volumes:
+  #      - postgres-billing-data:/var/lib/postgresql/data
+  #      - ./init-scripts:/docker-entrypoint-initdb.d
+  #    restart: on-failure
+  #    healthcheck:
+  #      test: ["CMD-SHELL", "pg_isready -U yassineboughroudi"]
+  #      interval: 10s
+  #      timeout: 5s
+  #      retries: 5
+  #
+  #  # ----------------------------------------------------
+  #  # PostgreSQL for Scheduling
+  #  # ----------------------------------------------------
+  #  postgres-scheduling-db:
+  #    image: postgres:15
+  #    container_name: postgres-scheduling-db
+  #    platform: linux/amd64
+  #    environment:
+  #      POSTGRES_USER: admin
+  #      POSTGRES_PASSWORD: admin
+  #      POSTGRES_DB: scheduling_db
+  #    ports:
+  #      - "5433:5432"
+  #    networks:
+  #      - my-network
+  #    volumes:
+  #      - postgres-scheduling-data:/var/lib/postgresql/data
+  #      - ./init-scripts:/docker-entrypoint-initdb.d
+  #    restart: on-failure
+  #    healthcheck:
+  #      test: ["CMD-SHELL", "pg_isready -U admin"]
+  #      interval: 10s
+  #      timeout: 5s
+  #      retries: 5
 
-  postgres-scheduling-db:
-    image: postgres:15
-    container_name: postgres-scheduling-db
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: root
-      POSTGRES_DB: scheduling_db
-    ports:
-      - "5433:5432"
-    networks:
-      - my-network
-    volumes:
-      - postgres-scheduling-data:/var/lib/postgresql/data
-      - ./init-scripts:/docker-entrypoint-initdb.d  # Ensures DB and users are created
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 5s
-      timeout: 10s
-      retries: 5
-
-  ##################################################################
-  # Microservices
-  ##################################################################
-  config-server:
-    image: docker.io/boughroudi/config-server:latest
-    container_name: config-server
-    environment:
-      - SPRING_CLOUD_CONFIG_URI=http://config-server:8080
-      - SPRING_CLOUD_CONSUL_HOST=consul
-      - SPRING_CLOUD_CONSUL_PORT=8500
-    ports:
-      - "8888:8080"
-    networks:
-      - my-network
-    depends_on:
-      consul:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
-
+  # ----------------------------------------------------
+  # Patient Management Service
+  # ----------------------------------------------------
   patient-management-service:
-    image: docker.io/boughroudi/patient-management-service:latest
-    container_name: patient-management-service
-    ports:
-      - "8082:8080"
-    restart: on-failure
-    networks:
-      - my-network
-    depends_on:
-      config-server:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      image: docker.io/boughroudi/patient-management-service:latest
+      container_name: patient-management-service
+      platform: linux/amd64
+      restart: on-failure
+      ports:
+        - "8082:8080"
+      depends_on:
+        - config-server
+        - consul
+      networks:
+        - my-network
 
+  # ----------------------------------------------------
+  # Billing Service
+  # ----------------------------------------------------
   billing-service:
-    image: docker.io/boughroudi/billing-service:latest
-    container_name: billing-service
-    restart: on-failure
-    ports:
-      - "8086:8080"
-    networks:
-      - my-network
-    depends_on:
-      config-server:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
-      postgres-billing-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 10s
-      timeout: 10s
-      retries: 5
+      image: docker.io/boughroudi/billing-service:latest
+      container_name: billing-service
+      platform: linux/amd64
+      restart: on-failure
+      ports:
+        - "8086:8080"
+      depends_on:
+        - config-server
+        - consul
+        - rabbitmq
+      networks:
+        - my-network
 
+  # ----------------------------------------------------
+  # Scheduling Service
+  # ----------------------------------------------------
   scheduling-service:
-    image: docker.io/boughroudi/scheduling-service:latest
-    container_name: scheduling-service
-    restart: on-failure
-    ports:
-      - "8083:8080"
-    networks:
-      - my-network
-    depends_on:
-      config-server:
-        condition: service_healthy
-      consul:
-        condition: service_healthy
-      postgres-scheduling-db:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      image: docker.io/boughroudi/scheduling-service:latest
+      container_name: scheduling-service
+      platform: linux/amd64
+      restart: on-failure
+      depends_on:
+        - config-server
+        - consul
+        - rabbitmq
+      networks:
+        - my-network
+      ports:
+        - "8083:8080"
 
+  # ----------------------------------------------------
+  # Kidney Stone Service (Python)
+  # ----------------------------------------------------
   kidney-stone-service:
     image: docker.io/boughroudi/kidney-stone-service:latest
     container_name: kidney-stone-service
+    platform: linux/amd64  # Force x86 emulation
     restart: on-failure
     environment:
       - MONGODB_URI=mongodb://mongo-db:27017
       - RABBITMQ_HOST=rabbitmq
       - RABBITMQ_PORT=5672
+    depends_on:
+      - mongo-db
+      - config-server
+      - rabbitmq
+      - patient-management-service
     networks:
       - my-network
     ports:
       - "8000:8000"
-    depends_on:
-      mongo-db:
-        # If you want a healthcheck for Mongo, also use condition: service_healthy
-        condition: service_started
-      config-server:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-      patient-management-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
 
+  # ----------------------------------------------------
+  # API Gateway Service
+  # ----------------------------------------------------
   gateway-service:
-    image: docker.io/boughroudi/gateway-service:latest
-    container_name: gateway-service
-    restart: on-failure
-    ports:
-      - "9999:8080"
-    networks:
-      - my-network
-    depends_on:
-      consul:
-        condition: service_healthy
-      config-server:
-        condition: service_healthy
-      kidney-stone-service:
-        condition: service_healthy
-      patient-management-service:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/actuator/health || exit 1"]
-      interval: 5s
-      timeout: 5s
-      retries: 5
+      image: docker.io/boughroudi/gateway-service:latest
+      container_name: gateway-service
+      platform: linux/amd64
+      restart: on-failure
+      ports:
+        - "9999:8080"
+      depends_on:
+        - config-server
+        - kidney-stone-service
+        - patient-management-service
+      networks:
+        - my-network
 
+# --------------------------------------------------------
+# Docker Networks & Volumes
+# --------------------------------------------------------
 networks:
   my-network:
     driver: bridge
-
-volumes:
-  postgres-billing-data:
-  postgres-scheduling-data:
-

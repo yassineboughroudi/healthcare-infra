@@ -1,97 +1,65 @@
-name: Integration Tests
+name: CI Pipeline for Healthcare Infrastructure
 
 on:
   push:
-    branches: [ "main" ]
+    branches:
+      - main
   pull_request:
-    branches: [ "main" ]
-  workflow_dispatch:  # allows manual triggering in the Actions tab
+    branches:
+      - main
 
 jobs:
-  run-tests:
+  build-and-test:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Check out code
+      # Step 1: Check out the healthcare-infra code
+      - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 1) (Optional) Docker login if your images are private
-      # If Docker Hub images are public, skip this step.
-      - name: Docker Login
-        if: always()
+      # Step 2: Log in to DockerHub (replace with your registry if different)
+      - name: Log in to DockerHub
         uses: docker/login-action@v2
         with:
-          registry: docker.io
-          username: ${{ secrets.DOCKERHUB_USERNAME }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
 
-      # 2) Spin up containers in the background
-      - name: Docker Compose Up
-        run: docker compose up -d
+      # Step 3: Pull the latest images from DockerHub
+      - name: Pull Docker Images
+        run: docker-compose pull
 
-      - name: Wait for Containers to be Healthy
+      # Step 4: Start all services using docker-compose
+      - name: Start Services
+        run: docker-compose up -d
+
+      # Step 5: Wait for services to become healthy
+      - name: Wait for Services to Start
         run: |
-          set -e
-          TIMEOUT=120  # 2 minutes, adjust as needed
-          SECONDS=0
-          
-          while true; do
-            # Check how many containers have (healthy) status
-            HEALTHY_COUNT=$(docker compose ps --format json | \
-              jq '[ .[] | select(.State == "running" and .Health == "healthy") ] | length')
-          
-            # Count how many total services you expect to be healthy
-            # (Excluding your DB containers or only focusing on your microservices)
-            EXPECTED_HEALTHY=6  # e.g., 6 microservices that do health checks
-          
-            echo "Currently healthy containers: $HEALTHY_COUNT"
-          
-            if [ "$HEALTHY_COUNT" -eq "$EXPECTED_HEALTHY" ]; then
-              echo "All containers are healthy!"
-              break
-            fi
-          
-            if [ $SECONDS -gt $TIMEOUT ]; then
-              echo "Timed out waiting for containers to become healthy."
-              docker compose ps
-              exit 1
-            fi
-          
-            echo "Not all containers healthy yet, waiting 5 seconds..."
-            sleep 5
-          done
-      
+          echo "Waiting for services to become healthy..."
+          sleep 30
 
-      # 4) Run end-to-end tests
-      # Option A: Curl checks to verify each service's health or key endpoints
-      - name: Basic Endpoint Checks
+      # Step 6: Perform health checks on critical services
+      - name: Run Health Checks
         run: |
-          set -e  # fail on error
-          echo "Checking Gateway health..."
-          curl -f http://localhost:9999/actuator/health
-          
-          echo "Checking Patient Management..."
-          curl -f http://localhost:8082/actuator/health
+          curl -f http://localhost:8500/v1/status/leader || exit 1      # Consul
+          curl -f http://localhost:8888/actuator/health || exit 1      # Config Server
+          curl -f http://localhost:8082/actuator/health || exit 1      # Patient Management
+          curl -f http://localhost:8086/actuator/health || exit 1      # Billing Service
+          curl -f http://localhost:8083/actuator/health || exit 1      # Scheduling Service
+          curl -f http://localhost:8000/health || exit 1               # Kidney Stone Service
+          curl -f http://localhost:9999/actuator/health || exit 1      # Gateway Service
+          echo "All services are healthy!"
 
-          echo "Checking Billing..."
-          curl -f http://localhost:8086/actuator/health
+      # Step 7: Run integration tests (e.g., Postman or curl-based tests)
+      - name: Run Integration Tests
+        run: |
+          echo "Running integration tests..."
+          curl -X POST http://localhost:8082/api/patients -H "Content-Type: application/json" -d '{"name":"John Doe", "age":30}'
+          curl -X GET http://localhost:8082/api/patients
+          curl -X POST http://localhost:8083/api/appointments -H "Content-Type: application/json" -d '{"patientId":1, "date":"2025-02-06"}'
+          echo "Integration tests passed!"
 
-          echo "Checking Scheduling..."
-          curl -f http://localhost:8083/actuator/health
-
-          echo "Checking Kidney Stone Service..."
-          curl -f http://localhost:8000/health
-
-          # or further checks, e.g., create a patient, schedule an appointment, etc.
-
-      # Option B: Use Newman to run a Postman collection
-      # - name: Install Newman
-      #   run: npm install -g newman
-      #
-      # - name: Run Postman Tests
-      #   run: newman run postman_collection.json --environment postman_environment.json
-
-      # 5) Tear down containers
-      - name: Docker Compose Down
+      # Step 8: Shut down the services
+      - name: Shut Down Services
         if: always()
-        run: docker compose down
+        run: docker-compose down
