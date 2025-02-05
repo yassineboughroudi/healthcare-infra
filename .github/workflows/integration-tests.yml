@@ -27,11 +27,11 @@ jobs:
 
       # Step 3: Pull the latest images from DockerHub
       - name: Pull Docker Images
-        run: docker-compose pull
+        run: docker compose pull
 
       # Step 4: Start all services using docker-compose
       - name: Start Services
-        run: docker-compose up -d
+        run: docker compose up -d
 
       # Step 5: Wait for services to become healthy
       - name: Wait for Services to Start
@@ -63,4 +63,4 @@ jobs:
       # Step 8: Shut down the services
       - name: Shut Down Services
         if: always()
-        run: docker-compose down
+        run: docker compose down
