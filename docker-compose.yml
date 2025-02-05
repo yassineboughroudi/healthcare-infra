@@ -28,7 +28,7 @@ services:
       platform: linux/amd64
       restart: on-failure
       ports:
-        - "8888:8080"
+        - "8888:8888"
       networks:
         - my-network
       depends_on:
