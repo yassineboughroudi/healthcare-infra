@@ -68,56 +68,6 @@ services:
     networks:
       - my-network
 
-  #  # ----------------------------------------------------
-  #  # PostgreSQL for Billing
-  #  # ----------------------------------------------------
-  #  postgres-billing-db:
-  #    image: postgres:15
-  #    container_name: postgres-billing-db
-  #    platform: linux/amd64
-  #    environment:
-  #      POSTGRES_USER: yassineboughroudi
-  #      POSTGRES_PASSWORD: root
-  #      POSTGRES_DB: billing_db
-  #    ports:
-  #      - "5432:5432"
-  #    networks:
-  #      - my-network
-  #    volumes:
-  #      - postgres-billing-data:/var/lib/postgresql/data
-  #      - ./init-scripts:/docker-entrypoint-initdb.d
-  #    restart: on-failure
-  #    healthcheck:
-  #      test: ["CMD-SHELL", "pg_isready -U yassineboughroudi"]
-  #      interval: 10s
-  #      timeout: 5s
-  #      retries: 5
-  #
-  #  # ----------------------------------------------------
-  #  # PostgreSQL for Scheduling
-  #  # ----------------------------------------------------
-  #  postgres-scheduling-db:
-  #    image: postgres:15
-  #    container_name: postgres-scheduling-db
-  #    platform: linux/amd64
-  #    environment:
-  #      POSTGRES_USER: admin
-  #      POSTGRES_PASSWORD: admin
-  #      POSTGRES_DB: scheduling_db
-  #    ports:
-  #      - "5433:5432"
-  #    networks:
-  #      - my-network
-  #    volumes:
-  #      - postgres-scheduling-data:/var/lib/postgresql/data
-  #      - ./init-scripts:/docker-entrypoint-initdb.d
-  #    restart: on-failure
-  #    healthcheck:
-  #      test: ["CMD-SHELL", "pg_isready -U admin"]
-  #      interval: 10s
-  #      timeout: 5s
-  #      retries: 5
-
   # ----------------------------------------------------
   # Patient Management Service
   # ----------------------------------------------------
@@ -206,6 +156,29 @@ services:
         - patient-management-service
       networks:
         - my-network
+  # ----------------------------------------------------
+  # Notification Service
+  # ----------------------------------------------------
+  notification-service:
+    image: docker.io/boughroudi/notification-service:latest
+    container_name: notification-service
+    platform: linux/amd64
+    restart: on-failure
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - SPRING_DATASOURCE_URL=jdbc:h2:mem:notification_db
+      - NOTIFICATION_QUEUE=notifications  # ✅ Ensure the queue name is passed
+    depends_on:
+      - config-server
+      - consul
+      - rabbitmq
+    networks:
+      - my-network
+    ports:
+      - "8084:8080"
+
 
 # --------------------------------------------------------
 # Docker Networks & Volumes
