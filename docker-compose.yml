@@ -33,6 +33,11 @@ services:
         - my-network
       depends_on:
         - consul
+      healthcheck:
+        test: [ "CMD", "wget", "-qO-", "http://localhost:8888/actuator/health" ]
+        interval: 10s
+        timeout: 17s
+        retries: 10
 
   # ----------------------------------------------------
   # RabbitMQ
@@ -83,7 +88,38 @@ services:
         - consul
       networks:
         - my-network
-
+  #  # ----------------------------------------------------
+  #  # Consul Configuration Loader
+  #  # ----------------------------------------------------
+  consul-config-loader:
+    image: curlimages/curl:latest
+    container_name: consul-config-loader
+    restart: on-failure
+    depends_on:
+      consul:
+        condition: service_healthy
+    networks:
+      - my-network
+    entrypoint: [ "/bin/sh", "-c" ]
+    command:
+      - >
+        set -x;
+        echo "Waiting for Consul...";
+        sleep 5;
+        echo "Loading configuration into Consul KV Store...";
+        curl --request PUT --data "jdbc:h2:mem:billingdb" http://consul:8500/v1/kv/config/billing-service/spring.datasource.url;
+        curl --request PUT --data "org.h2.Driver" http://consul:8500/v1/kv/config/billing-service/spring.datasource.driver-class-name;
+        curl --request PUT --data "sa" http://consul:8500/v1/kv/config/billing-service/spring.datasource.username;
+        curl --request PUT --data "" http://consul:8500/v1/kv/config/billing-service/spring.datasource.password;
+        curl --request PUT --data "org.hibernate.dialect.H2Dialect" http://consul:8500/v1/kv/config/billing-service/spring.jpa.database-platform;
+        curl --request PUT --data "create-drop" http://consul:8500/v1/kv/config/billing-service/spring.jpa.hibernate.ddl-auto;
+        curl --request PUT --data "true" http://consul:8500/v1/kv/config/billing-service/spring.jpa.show-sql;
+        curl --request PUT --data "rabbitmq" http://consul:8500/v1/kv/config/billing-service/spring.rabbitmq.host;
+        curl --request PUT --data "5672" http://consul:8500/v1/kv/config/billing-service/spring.rabbitmq.port;
+        curl --request PUT --data "guest" http://consul:8500/v1/kv/config/billing-service/spring.rabbitmq.username;
+        curl --request PUT --data "guest" http://consul:8500/v1/kv/config/billing-service/spring.rabbitmq.password;
+        echo "Configuration loaded successfully into Consul.";
+        sleep 10;
   # ----------------------------------------------------
   # Billing Service
   # ----------------------------------------------------
@@ -92,6 +128,11 @@ services:
       container_name: billing-service
       platform: linux/amd64
       restart: on-failure
+      environment:
+        - SPRING_RABBITMQ_HOST=rabbitmq
+        - SPRING_RABBITMQ_PORT=5672
+        - SPRING_RABBITMQ_USERNAME=guest
+        - SPRING_RABBITMQ_PASSWORD=guest
       ports:
         - "8086:8080"
       depends_on:
@@ -152,8 +193,6 @@ services:
         - "9999:8080"
       depends_on:
         - config-server
-        - kidney-stone-service
-        - patient-management-service
       networks:
         - my-network
   # ----------------------------------------------------
@@ -164,12 +203,6 @@ services:
     container_name: notification-service
     platform: linux/amd64
     restart: on-failure
-    environment:
-      - SPRING_PROFILES_ACTIVE=docker
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - SPRING_DATASOURCE_URL=jdbc:h2:mem:notification_db
-      - NOTIFICATION_QUEUE=notifications  # ✅ Ensure the queue name is passed
     depends_on:
       - config-server
       - consul
@@ -177,7 +210,7 @@ services:
     networks:
       - my-network
     ports:
-      - "8084:8080"
+      - "8081:8081"
 
 
 # --------------------------------------------------------
