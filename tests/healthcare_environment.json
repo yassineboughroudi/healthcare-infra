@@ -1,0 +1,23 @@
+{
+  "id": "HealthcareEnvironment",
+  "name": "Healthcare Environment",
+  "values": [
+    { "key": "base_url_consul",        "value": "http://localhost:8500" },
+    { "key": "base_url_config",        "value": "http://localhost:8888" },
+    { "key": "base_url_patient",       "value": "http://localhost:8082" },
+    { "key": "base_url_scheduling",    "value": "http://localhost:8083" },
+    { "key": "base_url_billing",       "value": "http://localhost:8086" },
+    { "key": "base_url_notification",  "value": "http://localhost:8081" },
+    { "key": "base_url_ai",           "value": "http://localhost:8000" },
+    { "key": "image_path", "value": "tests/Kidney_normal_test.png" },
+    { "key": "base_url_gateway",       "value": "http://localhost:9999" },
+    { "key": "patient_id",            "value": "3" },
+    { "key": "invoice_id",            "value": "1" },
+    { "key": "invoice_amount",        "value": "150.00" },
+    { "key": "payment_method",        "value": "CREDIT_CARD" },
+    { "key": "notification_email",    "value": "massimo.ome05@gmail.com" }
+  ],
+  "_postman_variable_scope": "environment",
+  "_postman_exported_at": "2025-02-12T12:00:00.000Z",
+  "_postman_exported_using": "Postman/10.0.0"
+}

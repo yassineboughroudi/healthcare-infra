@@ -1,0 +1,571 @@
+{
+  "info": {
+    "name": "Healthcare Microservices Collection (with Environment Vars + Assertions)",
+    "_postman_id": "12345678-abcd-efgh-ijkl-1234567890ab",
+    "description": "A collection of requests to test the Healthcare microservices with environment variables and basic assertions.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+
+    {
+      "name": "Health Checks",
+      "description": "Verify that each microservice is running and healthy",
+      "item": [
+        {
+          "name": "Consul - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_consul}}/v1/status/leader"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Check status code",
+                  "pm.test(\"Consul: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// 2. Ensure leader info is present (non-empty text)",
+                  "pm.test(\"Consul: Leader info is present\", function () {",
+                  "    const res = pm.response.text();",
+                  "    pm.expect(res).to.not.be.empty;",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Config Server - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_config}}/actuator/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// 1. Check status code",
+                  "pm.test(\"Config Server: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// 2. Check the health status is UP",
+                  "pm.test(\"Config Server: Health status is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Patient Management - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_patient}}/actuator/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Patient Management: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Patient Management: Health status is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Billing - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_billing}}/actuator/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Billing: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Billing: Health status is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Scheduling - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_scheduling}}/actuator/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Scheduling: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Scheduling: Health status is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Notification - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_notification}}/actuator/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Notification: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Notification: Health status is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Kidney Stone AI - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_ai}}/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"AI: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"AI: Health status is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"healthy\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Gateway - Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_gateway}}/actuator/health"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Gateway: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Gateway: Health status is UP\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.status).to.eql(\"UP\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Patient Management",
+      "description": "CRUD operations on Patient data",
+      "item": [
+        {
+          "name": "Create Patient",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"gender\": \"Male\",\n  \"dateOfBirth\": \"1990-01-01\",\n  \"phoneNumber\": \"555-1234\",\n  \"email\": \"{{notification_email}}\",\n  \"insuranceProvider\": \"Cigna\"\n}"
+            },
+            "url": "{{base_url_patient}}/api/patients"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Create Patient: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test(\"Create Patient: Verify patient data in response\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"id\");",
+                  "    pm.expect(jsonData.firstName).to.eql(\"John\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get All Patients",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_patient}}/api/patients"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Get All Patients: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Get All Patients: Response is an array\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Patient by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_patient}}/api/patients/{{patient_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Get Patient by ID: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Get Patient by ID: Verify correct ID\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    // 'patient_id' is a string env variable; convert to number if needed",
+                  "    pm.expect(jsonData.id).to.eql(parseInt(pm.environment.get('patient_id'), 10));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Update Patient",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Doe\",\n  \"gender\": \"Female\",\n  \"dateOfBirth\": \"1990-01-01\",\n  \"phoneNumber\": \"555-5678\",\n  \"email\": \"{{notification_email}}\",\n  \"insuranceProvider\": \"BlueCross\"\n}"
+            },
+            "url": "{{base_url_patient}}/api/patients/{{patient_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Update Patient: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Update Patient: First name should be 'Jane'\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData.firstName).to.eql(\"Jane\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Scheduling",
+      "description": "Endpoints for handling appointments",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": {{patient_id}},\n  \"startTime\": \"2025-02-15T10:00:00\",\n  \"endTime\": \"2025-02-15T10:30:00\",\n  \"serviceType\": \"Consultation\"\n}"
+            },
+            "url": "{{base_url_scheduling}}/api/appointments"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Create Appointment: Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test(\"Create Appointment: Verify appointment fields\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"id\");",
+                  "    pm.expect(jsonData.serviceType).to.eql(\"Consultation\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Billing",
+      "description": "Endpoints for managing invoices and payments",
+      "item": [
+        {
+          "name": "Create Invoice",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": {{patient_id}},\n  \"serviceName\": \"Consultation\",\n  \"amount\": {{invoice_amount}}\n}"
+            },
+            "url": "{{base_url_billing}}/billing/invoices"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Create Invoice: Status code is 201\", function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "pm.test(\"Create Invoice: Verify invoice fields\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"invoiceId\");",
+                  "    pm.expect(jsonData.amount).to.eql(parseFloat(pm.environment.get('invoice_amount')));",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Get Invoices by Patient",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": "{{base_url_billing}}/billing/invoices/patient/{{patient_id}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Get Invoices by Patient: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Get Invoices by Patient: Array returned\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Pay Invoice",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": "{{base_url_billing}}/billing/invoices/{{invoice_id}}/pay?amount={{invoice_amount}}&paymentMethod={{payment_method}}"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Pay Invoice: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Pay Invoice: Verify payment success\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"paid\");",
+                  "    pm.expect(jsonData.paid).to.eql(true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "Notification",
+      "description": "Endpoints for sending notifications",
+      "item": [
+        {
+          "name": "Send Email Notification",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"recipientEmail\": \"{{notification_email}}\",\n  \"subject\": \"Appointment Reminder\",\n  \"message\": \"Hello John, this is a reminder for your appointment tomorrow.\"\n}"
+            },
+            "url": "{{base_url_notification}}/api/notifications/send"
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Send Email Notification: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Send Email Notification: Check success field\", function () {",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"success\", true);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+
+    {
+      "name": "AI Kidney Stone Detection",
+      "description": "Endpoints for AI-based kidney stone detection",
+      "item": [
+        {
+          "name": "Predict Kidney Stone",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "multipart/form-data"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": "{{image_path}}"
+                },
+                {
+                  "key": "patient_id",
+                  "type": "text",
+                  "value": "{{patient_id}}"
+                }
+              ]
+            },
+            "url": "{{base_url_ai}}/predict",
+            "description": "Upload a JPG/PNG file in the 'file' form field for kidney stone detection."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test(\"Predict Kidney Stone: Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test(\"Predict Kidney Stone: Response has 'prediction' field\", function () {",
+                  "    // Example: The response might contain { 'prediction': 'positive' } or similar",
+                  "    const jsonData = pm.response.json();",
+                  "    pm.expect(jsonData).to.have.property(\"prediction\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+
+  ]
+}

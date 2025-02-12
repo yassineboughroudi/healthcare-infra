@@ -11,13 +11,12 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-
     steps:
       # Step 1: Check out the healthcare-infra code
       - name: Checkout Repository
         uses: actions/checkout@v3
 
-      # 4. Log in to Docker Hub
+      # Step 2: Log in to Docker Hub (so we can pull images)
       - name: Log in to Docker Hub
         uses: docker/login-action@v2
         with:
@@ -25,11 +24,11 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_PASSWORD }}
 
-      # Step 3: Pull the latest images from DockerHub
+      # Step 3: Pull the latest images from Docker Hub
       - name: Pull Docker Images
         run: docker compose pull
 
-      # Step 4: Start all services using docker-compose
+      # Step 4: Start all services using Docker Compose
       - name: Start Services
         run: docker compose up -d
 
@@ -52,16 +51,44 @@ jobs:
           curl -f http://localhost:9999/actuator/health || exit 1      # Gateway Service
           echo "All services are healthy!"
 
-      # Step 7: Run integration tests (e.g., Postman or curl-based tests)
-      - name: Run Integration Tests
+      # Step 7 (Optional): Quick integration tests via curl (sample only)
+      - name: Quick Integration Tests (cURL)
         run: |
-          echo "Running integration tests..."
+          echo "Running basic integration tests via cURL..."
           curl -X POST http://localhost:8082/api/patients -H "Content-Type: application/json" -d '{"name":"John Doe", "age":30}'
           curl -X GET http://localhost:8082/api/patients
-          curl -X POST http://localhost:8083/api/appointments -H "Content-Type: application/json" -d '{"patientId":1, "date":"2025-02-06"}'
-          echo "Integration tests passed!"
+          echo "Quick integration tests passed!"
 
-      # Step 8: Shut down the services
+      # Step 8: Install Node & Newman to run Postman tests
+      - name: Install Node.js
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y nodejs npm
+      - name: Install Newman
+        run: npm install -g newman newman-reporter-html
+
+      - name: Verify Kidney Stone Test Image
+        run: |
+          echo "Check if the AI test image exists..."
+          ls -lh tests/Kidney_normal_test.png
+      # Step 9: Run Postman Collection with Newman
+      - name: Run Postman Tests
+        run: |
+          echo "Running Postman collection tests with Newman..."
+          newman run ./tests/healthcare_microservices_collection.json \
+            -e ./tests/healthcare_environment.json \
+            -r cli,html \
+            --reporter-html-export newman-report.html
+          echo "Postman tests completed!"
+
+      - name: Upload Newman HTML Report
+        uses: actions/upload-artifact@v3
+        with:
+          name: newman-report
+          path: newman-report.html
+
+
+      # Step 10: Shut down the services
       - name: Shut Down Services
         if: always()
         run: docker compose down
